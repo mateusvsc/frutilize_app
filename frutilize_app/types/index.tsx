@@ -1,3 +1,5 @@
+import { ReactNode } from 'react';
+
 export interface Product {
   id: string;
   name: string;
@@ -36,12 +38,34 @@ export interface Customer {
 export interface Order {
   id?: number;
   customerId: number;
-  items: string; // JSON string dos itens
+  items: string;
   total: number;
   paymentMethod: 'pix' | 'credit' | 'debit' | 'cash' | 'vr';
   changeFor?: number;
-  status: 'pending' | 'confirmed' | 'delivered'| 'cancelled' | 'preparing';
+  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled' | 'preparing';
   createdAt?: string;
 }
 
 export type PaymentMethod = 'pix' | 'credit' | 'debit' | 'cash' | 'vr';
+
+export interface User {
+  id?: number;
+  username: string;
+  email: string;
+  password: string;
+  role: 'admin' | 'user';
+  createdAt?: string;
+}
+
+export interface UserSession {
+  userId: number;
+  username: string;
+  role: 'admin' | 'user';
+  loggedIn: boolean;
+}
+
+export interface DailyReportSchedule {
+  id?: number;
+  lastRun: string;
+  enabled: boolean;
+}

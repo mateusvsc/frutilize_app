@@ -11,8 +11,9 @@ import {
   RefreshControl 
 } from 'react-native';
 import { getAllOrdersWithCustomers, updateOrderStatus, printDatabaseLog, getOrderStatistics } from '../../database/database';
+import { useAuth } from '../../hooks/useAuth';
+import { useBrasiliaTime } from '../../hooks/useBrasiliaTime';
 
-// Interface local para evitar conflito de tipos
 interface AdminOrder {
   id: number;
   customerId: number;
@@ -38,7 +39,7 @@ interface OrderStatistics {
   statusBreakdown: Array<{ status: string; count: number }>;
 }
 
-const ADMIN_PASSWORD = '0406'; // Senha definida
+const ADMIN_PASSWORD = '0406';
 
 export default function AdminScreen() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -48,6 +49,9 @@ export default function AdminScreen() {
   const [showPasswordModal, setShowPasswordModal] = useState(true);
   const [attempts, setAttempts] = useState(0);
   const [statistics, setStatistics] = useState<OrderStatistics | null>(null);
+  
+  const { logout } = useAuth();
+  const { formatTime, formatDate, currentTime } = useBrasiliaTime();
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
@@ -72,19 +76,28 @@ export default function AdminScreen() {
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    setShowPasswordModal(true);
-    setPassword('');
-    setAttempts(0);
-    setOrders([]);
-    setStatistics(null);
+    Alert.alert('Sair', 'Deseja sair da conta?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { 
+        text: 'Sair', 
+        onPress: () => {
+          setIsAuthenticated(false);
+          setShowPasswordModal(true);
+          setPassword('');
+          setAttempts(0);
+          setOrders([]);
+          setStatistics(null);
+          logout();
+        }, 
+        style: 'destructive' 
+      }
+    ]);
   };
 
   const loadOrders = async () => {
     try {
       setRefreshing(true);
       const ordersData = await getAllOrdersWithCustomers();
-      // Converter para o tipo local AdminOrder
       const convertedOrders: AdminOrder[] = ordersData.map(order => ({
         id: order.id,
         customerId: order.customerId,
@@ -103,7 +116,7 @@ export default function AdminScreen() {
       }));
       setOrders(convertedOrders);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('Erro carregando pedidos:', error);
       Alert.alert('Erro', 'Não foi possível carregar os pedidos');
     } finally {
       setRefreshing(false);
@@ -115,7 +128,7 @@ export default function AdminScreen() {
       const stats = await getOrderStatistics();
       setStatistics(stats);
     } catch (error) {
-      console.error('Error loading statistics:', error);
+      console.error('Erro carregando estatísticas:', error);
     }
   };
 
@@ -129,10 +142,10 @@ export default function AdminScreen() {
     try {
       await updateOrderStatus(orderId, newStatus);
       Alert.alert('Sucesso', `Pedido #${orderId} atualizado para: ${getStatusText(newStatus)}`);
-      loadOrders(); // Recarrega a lista
-      loadStatistics(); // Atualiza estatísticas
+      loadOrders();
+      loadStatistics();
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error('Erro atualizando status:', error);
       Alert.alert('Erro', 'Não foi possível atualizar o status');
     }
   };
@@ -172,7 +185,6 @@ export default function AdminScreen() {
     }
   };
 
-  // Função para formatar os itens (backup caso formattedItems não funcione)
   const formatOrderItems = (itemsString: string): string => {
     try {
       const items = JSON.parse(itemsString);
@@ -196,12 +208,11 @@ export default function AdminScreen() {
       }).join('\n');
       
     } catch (error) {
-      console.error('Error formatting order items:', error);
+      console.error('Erro formatando itens do pedido:', error);
       return 'Erro ao carregar itens';
     }
   };
 
-  // Calcular estatísticas locais caso statistics seja null
   const getLocalStatistics = () => {
     const pendingOrders = orders.filter(order => order.status === 'pending').length;
     const preparingOrders = orders.filter(order => order.status === 'preparing').length;
@@ -219,7 +230,6 @@ export default function AdminScreen() {
 
   const localStats = getLocalStatistics();
 
-  // Modal de senha
   if (showPasswordModal) {
     return (
       <Modal visible={showPasswordModal} animationType="slide">
@@ -261,18 +271,20 @@ export default function AdminScreen() {
     );
   }
 
-  // Tela principal do admin (após login)
   return (
     <View style={{ flex: 1, padding: 16 }}>
-      {/* Header com botão de logout */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🏪 Painel do Administrador</Text>
+        <View>
+          <Text style={styles.headerTitle}>🏪 Painel do Administrador</Text>
+          <Text style={styles.timeText}>
+            {formatDate(currentTime)} - {formatTime(currentTime)}
+          </Text>
+        </View>
         <TouchableOpacity onPress={handleLogout}>
           <Text style={styles.logoutText}>🚪 Sair</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Botões de ação */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity 
           onPress={handlePrintLog}
@@ -289,7 +301,6 @@ export default function AdminScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Estatísticas rápidas */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
@@ -315,7 +326,6 @@ export default function AdminScreen() {
         </View>
       </View>
 
-      {/* Resumo financeiro */}
       {statistics && (
         <View style={styles.financialStats}>
           <Text style={styles.financialTitle}>💰 Resumo Financeiro</Text>
@@ -340,7 +350,6 @@ export default function AdminScreen() {
         </View>
       )}
 
-      {/* Lista de pedidos */}
       <ScrollView 
         style={{ flex: 1 }}
         refreshControl={
@@ -388,7 +397,6 @@ export default function AdminScreen() {
                 </Text>
               </View>
               
-              {/* Informações do cliente */}
               <View style={styles.customerInfo}>
                 <Text style={styles.customerName}>👤 {order.customerName}</Text>
                 <Text style={styles.customerDetail}>📞 {order.customerPhone}</Text>
@@ -398,7 +406,6 @@ export default function AdminScreen() {
                 )}
               </View>
               
-              {/* Itens do pedido */}
               <View style={styles.itemsContainer}>
                 <Text style={styles.itemsTitle}>🛒 Itens do Pedido:</Text>
                 <Text style={styles.itemsText}>
@@ -406,7 +413,6 @@ export default function AdminScreen() {
                 </Text>
               </View>
               
-              {/* Informações de pagamento */}
               <View style={styles.paymentInfo}>
                 <Text style={styles.paymentText}>
                   💳 {getPaymentMethodText(order.paymentMethod)}
@@ -421,7 +427,6 @@ export default function AdminScreen() {
                 </Text>
               </View>
 
-              {/* Botões de ação */}
               <View style={styles.statusButtons}>
                 <TouchableOpacity 
                   onPress={() => handleUpdateStatus(order.id, 'preparing')}
@@ -528,6 +533,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2E8B57',
+  },
+  timeText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
   },
   logoutText: {
     color: '#FF3B30',

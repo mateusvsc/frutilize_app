@@ -1,13 +1,19 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { useCart } from '../../hooks/useCart';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function TabLayout(): React.JSX.Element {
   const colorScheme = useColorScheme();
   const { getTotalItems } = useCart();
+  const { user } = useAuth();
   const totalItems = getTotalItems();
+
+  if (!user) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Tabs
@@ -48,16 +54,17 @@ export default function TabLayout(): React.JSX.Element {
           ),
         }}
       />
-      {/* Adicione a tela de admin aqui */}
-      <Tabs.Screen
-        name="admin"
-        options={{
-          title: 'Admin',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
-          ),
-        }}
-      />
+      {user.role === 'admin' && (
+        <Tabs.Screen
+          name="admin"
+          options={{
+            title: 'Admin',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="settings-outline" size={size} color={color} />
+            ),
+          }}
+        />
+      )}
     </Tabs>
   );
 }
